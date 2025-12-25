@@ -263,9 +263,9 @@
     <div id="ui-layer">
         <h1>Merry Christmas</h1>
         
-        <div class="controls-wrapper">
+        <div class="controls-wrapper" id="controls-wrapper">
             <div class="btn-group">
-                <div class="control-btn" id="cam-btn">📷 启用手势</div>
+                <div class="control-btn" id="cam-btn" style="display: none;">📷 启用手势</div>
                 <label class="control-btn">
                     选择文件夹
                     <input type="file" id="folder-input" webkitdirectory directory multiple>
@@ -275,6 +275,7 @@
                     <input type="file" id="file-input" multiple accept="image/*">
                 </label>
             </div>
+            <div class="control-btn" id="toggle-ui-btn" style="margin-top: 10px;">👁️ 隐藏界面</div>
         </div>
 
         <!-- 触屏模式切换按钮 -->
@@ -283,6 +284,10 @@
             <div class="mode-btn" onclick="setMode('SCATTER')" title="散落模式">✨</div>
             <div class="mode-btn" onclick="setMode('FOCUS_RANDOM')" title="聚焦模式">🔍</div>
         </div>
+        
+        <!-- 隐藏的点击区域，用于恢复UI显示 -->
+        <div id="ui-restore-area" style="display: none; position: absolute; top: 100px; right: 20px; width: 150px; height: 250px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="restoreUI()" title="点击恢复界面"></div>
+        <div id="ui-restore-area-bottom" style="display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; height: 60px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="restoreUI()" title="点击恢复界面"></div>
     </div>
 
     <div id="webcam-wrapper">
@@ -328,7 +333,8 @@
             focusTarget: null,
             hand: { detected: false, x: 0, y: 0 },
             rotation: { x: 0, y: 0 },
-            touch: { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0 }
+            touch: { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0 },
+            uiHidden: false
         };
 
         let scene, camera, renderer, composer;
@@ -384,6 +390,11 @@
             const loader = document.getElementById('loader');
             loader.style.opacity = 0;
             setTimeout(() => loader.remove(), 800);
+            
+            // 自动加载手势功能
+            setTimeout(() => {
+                initMediaPipe();
+            }, 1000);
 
             animate();
         }
@@ -739,7 +750,7 @@
 
         async function initMediaPipe() {
             if (isCameraRunning) return;
-            camBtn.innerText = "初始化中...";
+            if (camBtn) camBtn.innerText = "初始化中...";
             debugInfo.innerText = "加载AI模型中...";
             video = document.getElementById('webcam');
             try {
@@ -752,10 +763,13 @@
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", predictWebcam);
-                document.getElementById('webcam-wrapper').style.opacity = 1;
-                debugInfo.innerText = "手势已激活：显示手部";
-                camBtn.innerText = "手势已激活";
-                camBtn.classList.add('active');
+                // 隐藏视频预览窗口，但保持功能正常
+                document.getElementById('webcam-wrapper').style.display = 'none';
+                debugInfo.innerText = "手势已激活";
+                if (camBtn) {
+                    camBtn.innerText = "手势已激活";
+                    camBtn.classList.add('active');
+                }
                 isCameraRunning = true;
             } catch(e) {
                 console.warn("Camera error:", e);
@@ -763,7 +777,7 @@
                 if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') msg = "请允许摄像头访问！";
                 else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') msg = "摄像头需要HTTPS！";
                 debugInfo.innerText = msg; showMsg(msg);
-                camBtn.innerText = "重试摄像头";
+                if (camBtn) camBtn.innerText = "重试摄像头";
             }
         }
         let lastVideoTime = -1;
@@ -805,6 +819,44 @@
             }
         }
 
+        // 隐藏/显示UI的函数
+        function toggleUI() {
+            STATE.uiHidden = !STATE.uiHidden;
+            const controlsWrapper = document.getElementById('controls-wrapper');
+            const modeBar = document.getElementById('mode-bar');
+            const toggleBtn = document.getElementById('toggle-ui-btn');
+            const restoreArea = document.getElementById('ui-restore-area');
+            const restoreAreaBottom = document.getElementById('ui-restore-area-bottom');
+            
+            if (STATE.uiHidden) {
+                // 隐藏所有UI元素
+                if (controlsWrapper) controlsWrapper.style.display = 'none';
+                if (modeBar) modeBar.style.display = 'none';
+                if (toggleBtn) toggleBtn.style.display = 'none';
+                // 显示恢复区域（覆盖原按钮位置）
+                if (restoreArea) restoreArea.style.display = 'block';
+                if (restoreAreaBottom) restoreAreaBottom.style.display = 'block';
+            } else {
+                // 显示所有UI元素
+                if (controlsWrapper) controlsWrapper.style.display = 'flex';
+                if (modeBar) modeBar.style.display = 'flex';
+                if (toggleBtn) toggleBtn.style.display = 'flex';
+                // 隐藏恢复区域
+                if (restoreArea) restoreArea.style.display = 'none';
+                if (restoreAreaBottom) restoreAreaBottom.style.display = 'none';
+            }
+        }
+        
+        // 恢复UI显示的函数
+        function restoreUI() {
+            if (STATE.uiHidden) {
+                toggleUI();
+            }
+        }
+        
+        // 暴露给全局使用
+        window.restoreUI = restoreUI;
+
         function setupEvents() {
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
@@ -815,6 +867,13 @@
             document.getElementById('file-input').addEventListener('change', handleImageUpload);
             document.getElementById('folder-input').addEventListener('change', handleImageUpload);
             camBtn.addEventListener('click', () => { initMediaPipe(); });
+            
+            // 绑定隐藏/显示按钮
+            const toggleBtn = document.getElementById('toggle-ui-btn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', toggleUI);
+            }
+            
             window.addEventListener('keydown', (e) => {
                 const key = e.key.toLowerCase();
                 if (key === 'h') {
