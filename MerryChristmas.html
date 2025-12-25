@@ -867,197 +867,80 @@
             const iosDevice = isIOSDevice();
             
             try {
-                // 步骤1: 检查MediaPipe是否可用
-                if (typeof FilesetResolver === 'undefined' || typeof HandLandmarker === 'undefined') {
-                    throw new Error('MediaPipe库未加载，请检查网络连接');
-                }
+                // iOS Safari可能需要使用CPU模式，因为GPU支持可能有限
+                const delegate = iosDevice ? "CPU" : "GPU";
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: { 
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, 
+                        delegate: delegate 
+                    },
+                    runningMode: "VIDEO", 
+                    numHands: 1
+                });
                 
-                // 步骤2: 初始化MediaPipe（分离错误处理，允许降级）
-                let vision, handLandmarkerInstance;
-                let mediaPipeAvailable = false;
+                // iOS Safari视频约束优化
+                const constraints = { 
+                    video: { 
+                        facingMode: "user", 
+                        width: { ideal: iosDevice ? 480 : 640 }, 
+                        height: { ideal: iosDevice ? 360 : 480 },
+                        // iOS Safari特定选项
+                        ...(iosDevice && {
+                            frameRate: { ideal: 30, max: 30 }
+                        })
+                    } 
+                };
                 
-                try {
-                    // iOS Safari可能需要使用CPU模式，因为GPU支持可能有限
-                    const delegate = iosDevice ? "CPU" : "GPU";
-                    debugInfo.innerText = "加载MediaPipe模型...";
-                    
-                    vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
-                    
-                    handLandmarkerInstance = await HandLandmarker.createFromOptions(vision, {
-                        baseOptions: { 
-                            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, 
-                            delegate: delegate 
-                        },
-                        runningMode: "VIDEO", 
-                        numHands: 1
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                // iOS Safari需要等待视频元数据加载
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.warn("视频播放错误:", error);
+                        debugInfo.innerText = "需要用户交互才能启动视频";
                     });
-                    
-                    handLandmarker = handLandmarkerInstance;
-                    mediaPipeAvailable = true;
-                } catch (mediaPipeError) {
-                    console.error("MediaPipe初始化错误:", mediaPipeError);
-                    // iOS上MediaPipe可能不可用，但不阻止摄像头使用
+                }
+                
+                video.addEventListener("loadeddata", predictWebcam);
+                video.addEventListener("loadedmetadata", () => {
+                    // iOS Safari视频准备就绪
                     if (iosDevice) {
-                        console.warn("iOS上MediaPipe不可用，将仅使用摄像头（无手势识别）");
-                        debugInfo.innerText = "手势识别不可用，但摄像头已启用";
-                        // 不抛出错误，继续执行摄像头初始化
-                    } else {
-                        // 非iOS设备，MediaPipe错误需要报告
-                        let errorMsg = "AI模型加载失败";
-                        if (mediaPipeError instanceof TypeError) {
-                            errorMsg = `MediaPipe错误: ${mediaPipeError.message || '类型错误'}`;
-                        } else if (mediaPipeError.message) {
-                            errorMsg = `模型加载错误: ${mediaPipeError.message}`;
-                        }
-                        throw new Error(errorMsg);
-                    }
-                }
-                
-                // 步骤3: 获取摄像头权限（分离错误处理）
-                let stream;
-                try {
-                    debugInfo.innerText = "请求摄像头权限...";
-                    
-                    // iOS Safari视频约束优化
-                    const constraints = { 
-                        video: { 
-                            facingMode: "user", 
-                            width: { ideal: iosDevice ? 480 : 640 }, 
-                            height: { ideal: iosDevice ? 360 : 480 },
-                            // iOS Safari特定选项
-                            ...(iosDevice && {
-                                frameRate: { ideal: 30, max: 30 }
-                            })
-                        } 
-                    };
-                    
-                    // 检查getUserMedia是否可用
-                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                        throw new Error('浏览器不支持摄像头API');
-                    }
-                    
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                } catch (cameraError) {
-                    console.error("摄像头获取错误:", cameraError);
-                    let msg = "摄像头错误";
-                    if (cameraError.name === 'NotAllowedError' || cameraError.name === 'PermissionDeniedError') {
-                        msg = "请允许摄像头访问！";
-                    } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                        msg = "摄像头需要HTTPS！";
-                    } else if (cameraError.name === 'NotReadableError' || cameraError.name === 'TrackStartError') {
-                        msg = "摄像头被占用或不可用";
-                    } else if (cameraError.name === 'NotFoundError' || cameraError.name === 'DevicesNotFoundError') {
-                        msg = "未找到摄像头设备";
-                    } else if (cameraError instanceof TypeError) {
-                        msg = `摄像头API错误: ${cameraError.message || '类型错误'}`;
-                    } else if (cameraError.message) {
-                        msg = cameraError.message;
-                    }
-                    throw new Error(msg);
-                }
-                
-                // 步骤4: 设置视频流
-                try {
-                    video.srcObject = stream;
-                    
-                    // iOS Safari需要等待视频元数据加载
-                    const playPromise = video.play();
-                    if (playPromise !== undefined) {
-                        await playPromise.catch(error => {
-                            console.warn("视频播放错误:", error);
-                            // iOS上视频播放失败不影响功能
-                            if (!iosDevice) {
-                                throw new Error("视频播放失败");
-                            }
+                        video.play().catch(e => {
+                            console.warn("iOS视频播放需要用户交互:", e);
                         });
                     }
-                    
-                    // 只有在MediaPipe可用时才启动手势识别
-                    if (mediaPipeAvailable) {
-                        video.addEventListener("loadeddata", predictWebcam);
-                        video.addEventListener("loadedmetadata", () => {
-                            // iOS Safari视频准备就绪
-                            if (iosDevice) {
-                                video.play().catch(e => {
-                                    console.warn("iOS视频播放需要用户交互:", e);
-                                });
-                            }
-                        });
-                        debugInfo.innerText = "手势已激活";
-                    } else {
-                        // MediaPipe不可用，只启用摄像头
-                        video.addEventListener("loadedmetadata", () => {
-                            if (iosDevice) {
-                                video.play().catch(e => {
-                                    console.warn("iOS视频播放需要用户交互:", e);
-                                });
-                            }
-                        });
-                        debugInfo.innerText = "摄像头已启用（手势识别不可用）";
-                    }
-                    
-                    // 隐藏视频预览窗口，但保持功能正常
-                    document.getElementById('webcam-wrapper').style.display = 'none';
-                    
-                    if (camBtn) {
-                        camBtn.innerText = mediaPipeAvailable ? "手势已激活" : "摄像头已启用";
-                        if (mediaPipeAvailable) {
-                            camBtn.classList.add('active');
-                        }
-                    }
-                    isCameraRunning = true;
-                } catch (videoError) {
-                    console.error("视频设置错误:", videoError);
-                    // 停止流
-                    if (stream) {
-                        stream.getTracks().forEach(track => track.stop());
-                    }
-                    throw new Error(`视频设置失败: ${videoError.message || videoError.name}`);
-                }
+                });
                 
+                // 隐藏视频预览窗口，但保持功能正常
+                document.getElementById('webcam-wrapper').style.display = 'none';
+                debugInfo.innerText = "手势已激活";
+                if (camBtn) {
+                    camBtn.innerText = "手势已激活";
+                    camBtn.classList.add('active');
+                }
+                isCameraRunning = true;
             } catch(e) {
-                console.error("initMediaPipe完整错误:", e);
-                let msg = "摄像头错误";
-                
-                // 详细错误信息
-                if (e instanceof TypeError) {
-                    msg = `类型错误: ${e.message || '未知错误'}`;
-                    // 提供更具体的iOS错误信息
-                    if (iosDevice) {
-                        msg += " (iOS Safari可能不支持某些功能)";
-                    }
-                } else if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                console.warn("Camera error:", e);
+                let msg = "摄像头错误： " + e.name;
+                if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
                     msg = "请允许摄像头访问！";
-                } else if (e.message) {
-                    msg = e.message;
-                } else if (e.name) {
-                    msg = `错误: ${e.name}`;
+                } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    msg = "摄像头需要HTTPS！";
+                } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+                    msg = "摄像头被占用或不可用";
                 }
-                
                 debugInfo.innerText = msg; 
                 showMsg(msg);
-                if (camBtn) {
-                    camBtn.innerText = "重试摄像头";
-                    camBtn.classList.remove('active');
-                }
-                isCameraRunning = false;
+                if (camBtn) camBtn.innerText = "重试摄像头";
             }
         }
         let lastVideoTime = -1;
         let isPredicting = false;
-        let predictionErrorCount = 0;
-        const MAX_PREDICTION_ERRORS = 5;
-        
         async function predictWebcam() {
-            // 安全检查
-            if (!video || !isCameraRunning) {
-                return;
-            }
-            
-            if (isPredicting) {
-                requestAnimationFrame(predictWebcam);
-                return;
-            }
+            if (isPredicting) return;
             
             // iOS Safari视频状态检查
             if (video.readyState < 2) {
@@ -1065,35 +948,15 @@
                 return;
             }
             
-            // 检查handLandmarker是否可用
-            if (!handLandmarker) {
-                requestAnimationFrame(predictWebcam);
-                return;
-            }
-            
             if (video.currentTime !== lastVideoTime) {
                 lastVideoTime = video.currentTime;
-                if (video.readyState >= 2) {
+                if (handLandmarker && video.readyState >= 2) {
                     try {
                         isPredicting = true;
                         const result = handLandmarker.detectForVideo(video, performance.now());
                         processGestures(result);
-                        predictionErrorCount = 0; // 重置错误计数
                     } catch (e) {
-                        predictionErrorCount++;
                         console.warn("手势识别错误:", e);
-                        
-                        // 如果错误次数过多，停止预测
-                        if (predictionErrorCount >= MAX_PREDICTION_ERRORS) {
-                            console.error("手势识别连续错误过多，停止预测");
-                            debugInfo.innerText = "手势识别已停止";
-                            isCameraRunning = false;
-                            if (camBtn) {
-                                camBtn.innerText = "重试摄像头";
-                                camBtn.classList.remove('active');
-                            }
-                            return;
-                        }
                     } finally {
                         isPredicting = false;
                     }
