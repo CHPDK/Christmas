@@ -2,25 +2,71 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>Merry Christmas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
     <style>
         /* 修改背景为深色渐变 */
+        html {
+            height: 100%;
+            height: -webkit-fill-available; /* iOS Safari 100vh修复 */
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+            position: fixed;
+            width: 100%;
+        }
         body { 
             margin: 0; 
+            padding: 0;
             overflow: hidden; 
             background: radial-gradient(circle at center, #0f2027 0%, #203a43 50%, #2c5364 100%); 
             background-color: #050d1a; 
             font-family: 'Times New Roman', serif; 
             touch-action: none; 
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
             user-select: none;
             -webkit-user-select: none;
+            height: 100%;
+            height: -webkit-fill-available; /* iOS Safari 100vh修复 */
+            width: 100%;
+            position: fixed;
+            /* iOS安全区域支持 */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; cursor: grab; }
+        #canvas-container { 
+            width: 100vw; 
+            width: 100%;
+            height: 100vh; 
+            height: calc(var(--vh, 1vh) * 100); /* iOS Safari 100vh修复 */
+            height: -webkit-fill-available; /* iOS Safari 100vh修复 */
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+            cursor: grab;
+            touch-action: none;
+            -webkit-touch-callout: none;
+        }
         #canvas-container:active { cursor: grabbing; }
+        
+        /* iOS Safari移动端适配 */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                height: -webkit-fill-available;
+            }
+            #canvas-container {
+                height: -webkit-fill-available;
+            }
+        }
 
         /* UI Overlay */
         #ui-layer {
@@ -51,16 +97,21 @@
             border-top: 1px solid #d4af37; border-radius: 50%; 
             animation: spin 1s linear infinite;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { 
+            0% { -webkit-transform: rotate(0deg); transform: rotate(0deg); } 
+            100% { -webkit-transform: rotate(360deg); transform: rotate(360deg); } 
+        }
 
         /* Typography */
         h1 { 
             color: #fceea7; font-size: 8vw; 
-            max-size: 56px; margin: 0; font-weight: 400; 
+            max-width: 100%; max-height: 56px; margin: 0; font-weight: 400; 
             letter-spacing: 6px; 
             text-shadow: 0 0 50px rgba(252, 238, 167, 0.6); 
             background: linear-gradient(to bottom, #fff, #eebb66);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
             font-family: 'Cinzel', 'Times New Roman', serif;
             opacity: 0.9; transition: opacity 0.5s ease;
             text-align: center; pointer-events: none;
@@ -69,14 +120,66 @@
 
         /* Controls */
         .controls-wrapper {
-            position: absolute; top: 100px; right: 20px;        
+            position: absolute; 
+            top: 100px; 
+            top: max(100px, env(safe-area-inset-top, 100px)); /* iOS安全区域 */
+            right: 20px;
+            right: max(20px, env(safe-area-inset-right, 20px)); /* iOS安全区域 */
             pointer-events: auto;
             display: flex; flex-direction: column; align-items: flex-end;
             gap: 10px; z-index: 20;
             transition: opacity 0.5s ease, pointer-events 0s ease 0.5s;
         }
+        
+        /* 移动端按钮优化 */
+        @media (max-width: 768px) {
+            .controls-wrapper {
+                top: max(80px, env(safe-area-inset-top, 80px));
+                right: max(10px, env(safe-area-inset-right, 10px));
+            }
+            .control-btn {
+                padding: 12px 16px;
+                font-size: 11px;
+                min-width: 100px;
+                min-height: 44px; /* iOS推荐最小点击区域 */
+                -webkit-tap-highlight-color: rgba(212, 175, 55, 0.3);
+            }
+            
+            /* 移动端标题优化 */
+            h1 {
+                font-size: 6vw;
+                padding: 0 10px;
+            }
+        }
+        
+        /* 超小屏幕优化 */
+        @media (max-width: 480px) {
+            .controls-wrapper {
+                top: max(60px, env(safe-area-inset-top, 60px));
+                right: max(5px, env(safe-area-inset-right, 5px));
+            }
+            .control-btn {
+                padding: 10px 12px;
+                font-size: 10px;
+                min-width: 90px;
+            }
+            #mode-bar {
+                bottom: max(15px, env(safe-area-inset-bottom, 15px));
+            }
+            .mode-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
         .btn-group {
-            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+            display: flex; flex-direction: column; align-items: flex-end;
+        }
+        .btn-group > * {
+            margin-bottom: 10px;
+        }
+        .btn-group > *:last-child {
+            margin-bottom: 0;
         }
 
         .control-btn {
@@ -87,7 +190,10 @@
             letter-spacing: 2px; font-size: 10px;
             transition: all 0.4s;
             display: flex; align-items: center; justify-content: center;
+            -webkit-backdrop-filter: blur(5px);
             backdrop-filter: blur(5px); min-width: 120px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* 消除300ms点击延迟 */
         }
         
         .control-btn.active {
@@ -109,11 +215,33 @@
 
         /* Mode Buttons (Bottom) */
         #mode-bar {
-            position: absolute; bottom: 30px; left: 50%;
+            position: absolute; 
+            bottom: 30px;
+            bottom: max(30px, env(safe-area-inset-bottom, 30px)); /* iOS安全区域 */
+            left: 50%;
+            -webkit-transform: translateX(-50%);
             transform: translateX(-50%);
-            display: flex; gap: 15px;
+            display: flex;
             z-index: 20; pointer-events: auto;
             transition: opacity 0.5s ease, pointer-events 0s ease 0.5s;
+        }
+        
+        @media (max-width: 768px) {
+            #mode-bar {
+                bottom: max(20px, env(safe-area-inset-bottom, 20px));
+            }
+            .mode-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+                -webkit-tap-highlight-color: rgba(212, 175, 55, 0.3);
+            }
+        }
+        #mode-bar > * {
+            margin-right: 15px;
+        }
+        #mode-bar > *:last-child {
+            margin-right: 0;
         }
         .mode-btn {
             width: 50px; height: 50px; border-radius: 50%;
@@ -122,9 +250,20 @@
             color: #d4af37; font-size: 20px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: all 0.3s;
+            -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* 消除300ms点击延迟 */
         }
-        .mode-btn:active { transform: scale(0.9); background: #d4af37; color: #000; }
+        .mode-btn:active { 
+            -webkit-transform: scale(0.9); 
+            transform: scale(0.9); 
+            background: #d4af37; 
+            color: #000; 
+        }
+        .mode-btn {
+            -webkit-tap-highlight-color: transparent;
+        }
         
         /* Webcam feedback */
         #webcam-wrapper {
@@ -137,7 +276,7 @@
             z-index: 50; background: #000;
             transition: opacity 0.5s ease; 
         }
-        #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        #webcam { width: 100%; height: 100%; object-fit: cover; -webkit-transform: scaleX(-1); transform: scaleX(-1); }
 
         #debug-info {
             position: absolute; bottom: 5px; left: 5px;
@@ -148,6 +287,7 @@
         
         #msg-box {
             position: absolute; top: 50%; left: 50%;
+            -webkit-transform: translate(-50%, -50%);
             transform: translate(-50%, -50%);
             background: rgba(0, 0, 0, 0.9);
             border: 1px solid #d4af37;
@@ -158,16 +298,17 @@
         #footer-stats {
             position: absolute;
             bottom: 25px;
+            bottom: max(25px, env(safe-area-inset-bottom, 25px)); /* iOS安全区域 */
             right: 25px;
+            right: max(25px, env(safe-area-inset-right, 25px)); /* iOS安全区域 */
             z-index: 40;
             pointer-events: auto;
             display: flex;
             flex-direction: column;
-            gap: 12px;
             /* 整体磨砂玻璃面板效果 */
             background: rgba(8, 15, 25, 0.75);
-            backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
             padding: 15px;
             border-radius: 12px;
             border: 1px solid rgba(212, 175, 55, 0.25);
@@ -177,7 +318,23 @@
             
             /* 【修改】确保动画过渡自然 */
             opacity: 1;
+            -webkit-transform: translateY(0);
             transform: translateY(0);
+        }
+        
+        @media (max-width: 768px) {
+            #footer-stats {
+                bottom: max(15px, env(safe-area-inset-bottom, 15px));
+                right: max(15px, env(safe-area-inset-right, 15px));
+                width: 180px;
+                padding: 12px;
+            }
+        }
+        #footer-stats > * {
+            margin-bottom: 12px;
+        }
+        #footer-stats > *:last-child {
+            margin-bottom: 0;
         }
 
         /* 专门优化地图容器 */
@@ -240,6 +397,66 @@
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
     </style>
 
+    <!-- iOS Safari兼容性检测和polyfill -->
+    <script>
+        // 检测Safari浏览器
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                        (navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1);
+        
+        // 检测iOS设备
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        // 检测移动设备
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                        (window.innerWidth <= 768 && 'ontouchstart' in window);
+        
+        // 检测importmap支持（Safari 16.4+）
+        const supportsImportMap = HTMLScriptElement.supports && HTMLScriptElement.supports('importmap');
+        
+        // iOS Safari特殊处理
+        if (isIOS) {
+            // 修复iOS Safari 100vh问题
+            function setViewportHeight() {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            }
+            
+            setViewportHeight();
+            window.addEventListener('resize', setViewportHeight);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(setViewportHeight, 100);
+            });
+            
+            // 禁用iOS Safari的弹性滚动
+            document.body.addEventListener('touchmove', function(e) {
+                if (e.target.closest('#canvas-container')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            // 禁用双击缩放
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(e) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        }
+        
+        // 如果不支持importmap，使用动态import fallback
+        if (!supportsImportMap && isSafari) {
+            console.warn('Safari版本较旧，使用动态导入方式');
+        }
+        
+        // 全局暴露检测结果
+        window.isIOS = isIOS;
+        window.isMobile = isMobile;
+        window.isSafari = isSafari;
+    </script>
+    
     <script type="importmap">
         {
             "imports": {
@@ -288,7 +505,7 @@
         
         <!-- 隐藏的点击区域，用于恢复UI显示 -->
         <div id="ui-restore-area" style="display: none; position: absolute; top: 100px; right: 20px; width: 150px; height: 250px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="toggleUI()" title="点击切换界面显示"></div>
-        <div id="ui-restore-area-bottom" style="display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; height: 60px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="toggleUI()" title="点击切换界面显示"></div>
+        <div id="ui-restore-area-bottom" style="display: none; position: absolute; bottom: 30px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); width: 200px; height: 60px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="toggleUI()" title="点击切换界面显示"></div>
     </div>
 
     <div id="webcam-wrapper">
@@ -401,31 +618,61 @@
         }
         function setupTouchAndClick() {
             const container = document.getElementById('canvas-container');
-            container.addEventListener('pointerdown', (e) => {
+            
+            // 统一处理指针事件（支持鼠标和触摸）
+            const handleStart = (e) => {
                 STATE.touch.active = true;
-                STATE.touch.startX = e.clientX;
-                STATE.touch.startY = e.clientY;
-                STATE.touch.lastX = e.clientX;
-                STATE.touch.lastY = e.clientY;
-            });
-            window.addEventListener('pointermove', (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                STATE.touch.startX = clientX;
+                STATE.touch.startY = clientY;
+                STATE.touch.lastX = clientX;
+                STATE.touch.lastY = clientY;
+                if (e.touches) e.preventDefault();
+            };
+            
+            const handleMove = (e) => {
                 if (!STATE.touch.active) return;
-                const deltaX = e.clientX - STATE.touch.lastX;
-                const deltaY = e.clientY - STATE.touch.lastY;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const deltaX = clientX - STATE.touch.lastX;
+                const deltaY = clientY - STATE.touch.lastY;
                 STATE.rotation.y += deltaX * 0.005;
                 STATE.rotation.x += deltaY * 0.002;
                 STATE.rotation.x = Math.max(-0.5, Math.min(0.5, STATE.rotation.x));
-                STATE.touch.lastX = e.clientX;
-                STATE.touch.lastY = e.clientY;
-            });
-            window.addEventListener('pointerup', (e) => {
+                STATE.touch.lastX = clientX;
+                STATE.touch.lastY = clientY;
+                if (e.touches) e.preventDefault();
+            };
+            
+            const handleEnd = (e) => {
                 STATE.touch.active = false;
-            });
-            container.addEventListener('click', (e) => {
-                const moveDist = Math.hypot(e.clientX - STATE.touch.startX, e.clientY - STATE.touch.startY);
+                if (e.touches) e.preventDefault();
+            };
+            
+            // 优先使用Pointer Events，Safari支持
+            if (window.PointerEvent) {
+                container.addEventListener('pointerdown', handleStart);
+                window.addEventListener('pointermove', handleMove);
+                window.addEventListener('pointerup', handleEnd);
+                window.addEventListener('pointercancel', handleEnd);
+            } else {
+                // Fallback到触摸和鼠标事件
+                container.addEventListener('mousedown', handleStart);
+                container.addEventListener('touchstart', handleStart, { passive: false });
+                window.addEventListener('mousemove', handleMove);
+                window.addEventListener('touchmove', handleMove, { passive: false });
+                window.addEventListener('mouseup', handleEnd);
+                window.addEventListener('touchend', handleEnd);
+                window.addEventListener('touchcancel', handleEnd);
+            }
+            const handleClick = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+                const clientY = e.touches ? e.touches[0].clientY : (e.changedTouches ? e.changedTouches[0].clientY : e.clientY);
+                const moveDist = Math.hypot(clientX - STATE.touch.startX, clientY - STATE.touch.startY);
                 if (moveDist > 10) return; 
-                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                mouse.x = (clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(clientY / window.innerHeight) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(mainGroup.children, true);
                 let clickedPhoto = null;
@@ -446,30 +693,94 @@
                         STATE.focusTarget = null;
                     }
                 }
-            });
+            };
+            
+            container.addEventListener('click', handleClick);
+            container.addEventListener('touchend', (e) => {
+                // 防止双击缩放
+                if (e.touches && e.touches.length === 0) {
+                    handleClick(e);
+                }
+            }, { passive: true });
+            // 双击切换模式（Safari兼容）
             let lastTap = 0;
+            let tapTimer = null;
             container.addEventListener('touchend', (e) => {
                 const currentTime = new Date().getTime();
                 const tapLength = currentTime - lastTap;
                 if (tapLength < 300 && tapLength > 0) {
+                    // 清除之前的单次点击定时器
+                    if (tapTimer) clearTimeout(tapTimer);
                     STATE.mode = (STATE.mode === 'SCATTER') ? 'TREE' : 'SCATTER';
                     e.preventDefault();
+                } else {
+                    // 单次点击延迟处理，避免与双击冲突
+                    tapTimer = setTimeout(() => {
+                        // 单次点击处理已在handleClick中
+                    }, 300);
                 }
                 lastTap = currentTime;
-            });
+            }, { passive: false });
         }
         function initThree() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
             scene.background = new THREE.Color(CONFIG.colors.bg);
             scene.fog = new THREE.FogExp2(CONFIG.colors.fog, 0.015);
-            camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // iOS Safari视口高度修复
+            const getViewportHeight = () => {
+                if (window.isIOS) {
+                    return window.innerHeight;
+                }
+                return window.innerHeight;
+            };
+            
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = getViewportHeight();
+            
+            camera = new THREE.PerspectiveCamera(42, viewportWidth / viewportHeight, 0.1, 1000);
             camera.position.set(0, 2, CONFIG.camera.z); 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // iOS Safari WebGL兼容性检测和优化
+            const webglParams = { 
+                antialias: !window.isIOS, // iOS上禁用抗锯齿以提升性能
+                alpha: true, 
+                powerPreference: window.isIOS ? "default" : "high-performance", // iOS使用默认性能模式
+                preserveDrawingBuffer: false,
+                stencil: false, // iOS优化
+                depth: true
+            };
+            
+            // 检测WebGL支持
+            try {
+                renderer = new THREE.WebGLRenderer(webglParams);
+            } catch (e) {
+                console.warn('WebGL初始化失败，尝试降级设置:', e);
+                webglParams.antialias = false;
+                webglParams.powerPreference = "default";
+                try {
+                    renderer = new THREE.WebGLRenderer(webglParams);
+                } catch (e2) {
+                    console.error('WebGL初始化完全失败:', e2);
+                    showMsg('您的设备不支持WebGL，无法显示3D场景');
+                    return;
+                }
+            }
+            
+            renderer.setSize(viewportWidth, viewportHeight);
+            // iOS Safari设备像素比处理（限制以提升性能）
+            const pixelRatio = window.devicePixelRatio || 1;
+            const maxPixelRatio = window.isIOS ? 1.5 : 2; // iOS限制像素比
+            renderer.setPixelRatio(Math.min(pixelRatio, maxPixelRatio));
             renderer.toneMapping = THREE.ReinhardToneMapping; 
-            renderer.toneMappingExposure = 2.2; 
+            renderer.toneMappingExposure = 2.2;
+            
+            // iOS性能优化
+            if (window.isIOS) {
+                renderer.shadowMap.enabled = false; // iOS禁用阴影以提升性能
+            }
+            
             container.appendChild(renderer.domElement);
             mainGroup = new THREE.Group();
             scene.add(mainGroup);
@@ -717,17 +1028,69 @@
 
         function handleImageUpload(e) {
             const files = e.target.files;
-            if(!files.length) return;
-            Array.from(files).forEach(f => {
-                if (!f.type.startsWith('image/')) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    new THREE.TextureLoader().load(ev.target.result, (t) => {
-                        t.colorSpace = THREE.SRGBColorSpace;
-                        addPhotoToScene(t);
-                    });
+            if(!files || !files.length) return;
+            
+            // iOS Safari文件处理兼容性
+            const fileArray = Array.from ? Array.from(files) : [].slice.call(files);
+            
+            // iOS Safari文件数量限制提示
+            if (window.isIOS && fileArray.length > 20) {
+                showMsg('iOS设备建议一次上传不超过20张图片');
+            }
+            
+            let loadedCount = 0;
+            const totalFiles = fileArray.length;
+            
+            fileArray.forEach((f, index) => {
+                // 检查文件类型（iOS Safari可能MIME类型不同）
+                const isImage = f.type && f.type.startsWith('image/');
+                const isImageByName = /\.(jpg|jpeg|png|gif|webp|bmp|heic|heif)$/i.test(f.name); // iOS支持HEIC格式
+                
+                if (!isImage && !isImageByName) {
+                    console.warn('不支持的文件类型:', f.name);
+                    return;
                 }
-                reader.readAsDataURL(f);
+                
+                // iOS文件大小检查（建议限制）
+                if (window.isIOS && f.size > 10 * 1024 * 1024) {
+                    console.warn('文件过大，可能影响性能:', f.name);
+                }
+                
+                const reader = new FileReader();
+                reader.onerror = () => {
+                    console.warn('文件读取失败:', f.name);
+                    showMsg('文件读取失败: ' + f.name);
+                };
+                reader.onload = (ev) => {
+                    try {
+                        new THREE.TextureLoader().load(ev.target.result, (t) => {
+                            // iOS Safari颜色空间处理
+                            if (t.colorSpace !== undefined) {
+                                t.colorSpace = THREE.SRGBColorSpace;
+                            }
+                            addPhotoToScene(t);
+                            loadedCount++;
+                            if (loadedCount === totalFiles) {
+                                showMsg(`成功加载 ${loadedCount} 张图片`);
+                            }
+                        }, undefined, (err) => {
+                            console.warn('纹理加载失败:', err);
+                            showMsg('图片加载失败: ' + f.name);
+                        });
+                    } catch (error) {
+                        console.warn('图片处理错误:', error);
+                        showMsg('图片处理失败: ' + f.name);
+                    }
+                };
+                
+                // iOS Safari文件读取优化（延迟加载避免内存问题）
+                if (window.isIOS && index > 0) {
+                    setTimeout(() => {
+                        reader.readAsDataURL(f);
+                    }, index * 50); // 每50ms加载一张
+                } else {
+                    reader.readAsDataURL(f);
+                }
             });
         }
         function loadPredefinedImages() {
@@ -755,15 +1118,55 @@
             debugInfo.innerText = "加载AI模型中...";
             video = document.getElementById('webcam');
             try {
+                // Safari MediaPipe兼容性处理
                 const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+                
+                // Safari可能需要使用CPU而不是GPU
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                const delegate = isSafari ? "CPU" : "GPU";
+                
                 handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                    baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
-                    runningMode: "VIDEO", numHands: 1
+                    baseOptions: { 
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, 
+                        delegate: delegate 
+                    },
+                    runningMode: "VIDEO", 
+                    numHands: 1
                 });
-                const constraints = { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } };
+                
+                // iOS Safari摄像头约束优化
+                const constraints = { 
+                    video: { 
+                        facingMode: "user", 
+                        // iOS性能优化：降低分辨率
+                        width: window.isIOS ? { ideal: 480, max: 640 } : { ideal: 640, max: 1280 }, 
+                        height: window.isIOS ? { ideal: 360, max: 480 } : { ideal: 480, max: 720 },
+                        frameRate: window.isIOS ? { ideal: 24, max: 24 } : { ideal: 30, max: 30 }
+                    } 
+                };
+                
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
-                video.addEventListener("loadeddata", predictWebcam);
+                
+                // Safari视频加载事件处理
+                const handleLoadedData = () => {
+                    video.removeEventListener("loadeddata", handleLoadedData);
+                    predictWebcam();
+                };
+                video.addEventListener("loadeddata", handleLoadedData);
+                
+                // 确保视频在iOS Safari中播放
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.setAttribute('x5-playsinline', ''); // 微信浏览器兼容
+                video.muted = true; // iOS Safari自动播放需要静音
+                video.playsInline = true; // iOS Safari属性
+                
+                // iOS Safari视频播放优化
+                if (window.isIOS) {
+                    video.load(); // 强制加载
+                }
+                
                 // 隐藏视频预览窗口，但保持功能正常
                 document.getElementById('webcam-wrapper').style.display = 'none';
                 debugInfo.innerText = "手势已激活";
@@ -775,9 +1178,17 @@
             } catch(e) {
                 console.warn("Camera error:", e);
                 let msg = "摄像头错误： " + e.name;
-                if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') msg = "请允许摄像头访问！";
-                else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') msg = "摄像头需要HTTPS！";
-                debugInfo.innerText = msg; showMsg(msg);
+                if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                    msg = "请允许摄像头访问！";
+                } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    msg = "摄像头需要HTTPS！";
+                } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+                    msg = "未找到摄像头设备";
+                } else {
+                    msg = "摄像头初始化失败：" + e.message;
+                }
+                debugInfo.innerText = msg; 
+                showMsg(msg);
                 if (camBtn) camBtn.innerText = "重试摄像头";
             }
         }
@@ -890,15 +1301,55 @@
         window.toggleUI = toggleUI;
 
         function setupEvents() {
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                composer.setSize(window.innerWidth, window.innerHeight);
+            // iOS Safari窗口大小变化处理（包括方向变化）
+            const handleResize = () => {
+                // iOS Safari需要延迟获取正确的视口尺寸
+                setTimeout(() => {
+                    const width = window.innerWidth;
+                    const height = window.isIOS ? window.innerHeight : window.innerHeight;
+                    
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                    if (composer) {
+                        composer.setSize(width, height);
+                    }
+                    
+                    // 更新CSS变量（iOS 100vh修复）
+                    if (window.isIOS) {
+                        const vh = height * 0.01;
+                        document.documentElement.style.setProperty('--vh', `${vh}px`);
+                    }
+                }, window.isIOS ? 150 : 0);
+            };
+            
+            window.addEventListener('resize', handleResize);
+            // iOS Safari方向变化处理
+            window.addEventListener('orientationchange', () => {
+                setTimeout(handleResize, 200);
             });
-            document.getElementById('file-input').addEventListener('change', handleImageUpload);
-            document.getElementById('folder-input').addEventListener('change', handleImageUpload);
-            camBtn.addEventListener('click', () => { initMediaPipe(); });
+            
+            // iOS Safari页面可见性变化处理（防止后台运行）
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    // 页面隐藏时暂停动画（可选）
+                } else {
+                    // 页面显示时恢复
+                }
+            });
+            
+            const fileInput = document.getElementById('file-input');
+            const folderInput = document.getElementById('folder-input');
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', handleImageUpload);
+            }
+            if (folderInput) {
+                folderInput.addEventListener('change', handleImageUpload);
+            }
+            if (camBtn) {
+                camBtn.addEventListener('click', () => { initMediaPipe(); });
+            }
             
             // 绑定隐藏/显示按钮
             const toggleBtn = document.getElementById('toggle-ui-btn');
@@ -923,29 +1374,38 @@
         function animate() {
             requestAnimationFrame(animate);
             const dt = clock.getDelta();
+            
+            // Safari性能优化：限制delta时间
+            const safeDt = Math.min(dt, 0.1);
+            
             if (STATE.hand.detected) {
                 if (STATE.mode === 'SCATTER') {
                     const targetRotY = STATE.hand.x * Math.PI * 0.9; 
                     const targetRotX = STATE.hand.y * Math.PI * 0.25;
-                    STATE.rotation.y += (targetRotY - STATE.rotation.y) * 3.0 * dt;
-                    STATE.rotation.x += (targetRotX - STATE.rotation.x) * 3.0 * dt;
+                    STATE.rotation.y += (targetRotY - STATE.rotation.y) * 3.0 * safeDt;
+                    STATE.rotation.x += (targetRotX - STATE.rotation.x) * 3.0 * safeDt;
                 } else {
-                    STATE.rotation.y += 0.3 * dt;
+                    STATE.rotation.y += 0.3 * safeDt;
                 }
             } else if (STATE.touch.active) {
+                // 触摸旋转已在事件处理中更新
             } else {
                 if(STATE.mode === 'TREE') {
-                    STATE.rotation.y += 0.3 * dt;
-                    STATE.rotation.x += (0 - STATE.rotation.x) * 2.0 * dt;
+                    STATE.rotation.y += 0.3 * safeDt;
+                    STATE.rotation.x += (0 - STATE.rotation.x) * 2.0 * safeDt;
                 } else {
-                    STATE.rotation.y += 0.1 * dt; 
+                    STATE.rotation.y += 0.1 * safeDt; 
                 }
             }
             mainGroup.rotation.y = STATE.rotation.y;
             mainGroup.rotation.x = STATE.rotation.x;
-            particleSystem.forEach(p => p.update(dt, STATE.mode, STATE.focusTarget));
+            particleSystem.forEach(p => p.update(safeDt, STATE.mode, STATE.focusTarget));
             updateSnow();
-            composer.render();
+            if (composer) {
+                composer.render();
+            } else if (renderer) {
+                renderer.render(scene, camera);
+            }
         }
         init();
     </script>
