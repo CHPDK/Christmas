@@ -73,7 +73,7 @@
             pointer-events: auto;
             display: flex; flex-direction: column; align-items: flex-end;
             gap: 10px; z-index: 20;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.5s ease, pointer-events 0s ease 0.5s;
         }
         .btn-group {
             display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
@@ -113,6 +113,7 @@
             transform: translateX(-50%);
             display: flex; gap: 15px;
             z-index: 20; pointer-events: auto;
+            transition: opacity 0.5s ease, pointer-events 0s ease 0.5s;
         }
         .mode-btn {
             width: 50px; height: 50px; border-radius: 50%;
@@ -275,7 +276,7 @@
                     <input type="file" id="file-input" multiple accept="image/*">
                 </label>
             </div>
-            <div class="control-btn" id="toggle-ui-btn" style="margin-top: 10px;">👁️ 隐藏界面</div>
+            <div class="control-btn" id="toggle-ui-btn" style="margin-top: 10px;">隐藏界面</div>
         </div>
 
         <!-- 触屏模式切换按钮 -->
@@ -286,8 +287,8 @@
         </div>
         
         <!-- 隐藏的点击区域，用于恢复UI显示 -->
-        <div id="ui-restore-area" style="display: none; position: absolute; top: 100px; right: 20px; width: 150px; height: 250px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="restoreUI()" title="点击恢复界面"></div>
-        <div id="ui-restore-area-bottom" style="display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; height: 60px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="restoreUI()" title="点击恢复界面"></div>
+        <div id="ui-restore-area" style="display: none; position: absolute; top: 100px; right: 20px; width: 150px; height: 250px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="toggleUI()" title="点击切换界面显示"></div>
+        <div id="ui-restore-area-bottom" style="display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; height: 60px; z-index: 30; cursor: pointer; background: rgba(0,0,0,0.01);" onclick="toggleUI()" title="点击切换界面显示"></div>
     </div>
 
     <div id="webcam-wrapper">
@@ -829,25 +830,55 @@
             const restoreAreaBottom = document.getElementById('ui-restore-area-bottom');
             
             if (STATE.uiHidden) {
-                // 隐藏所有UI元素
-                if (controlsWrapper) controlsWrapper.style.display = 'none';
-                if (modeBar) modeBar.style.display = 'none';
-                if (toggleBtn) toggleBtn.style.display = 'none';
-                // 显示恢复区域（覆盖原按钮位置）
-                if (restoreArea) restoreArea.style.display = 'block';
-                if (restoreAreaBottom) restoreAreaBottom.style.display = 'block';
+                // 隐藏所有UI元素（使用opacity和pointer-events，保留元素在DOM中）
+                if (controlsWrapper) {
+                    controlsWrapper.style.opacity = '0';
+                    controlsWrapper.style.pointerEvents = 'none';
+                }
+                if (modeBar) {
+                    modeBar.style.opacity = '0';
+                    modeBar.style.pointerEvents = 'none';
+                }
+                if (toggleBtn) {
+                    toggleBtn.style.opacity = '0';
+                    toggleBtn.style.pointerEvents = 'none';
+                }
+                // 显示恢复区域（覆盖原按钮位置，可以点击切换）
+                if (restoreArea) {
+                    restoreArea.style.display = 'block';
+                    restoreArea.style.pointerEvents = 'auto';
+                }
+                if (restoreAreaBottom) {
+                    restoreAreaBottom.style.display = 'block';
+                    restoreAreaBottom.style.pointerEvents = 'auto';
+                }
             } else {
                 // 显示所有UI元素
-                if (controlsWrapper) controlsWrapper.style.display = 'flex';
-                if (modeBar) modeBar.style.display = 'flex';
-                if (toggleBtn) toggleBtn.style.display = 'flex';
+                if (controlsWrapper) {
+                    controlsWrapper.style.opacity = '1';
+                    controlsWrapper.style.pointerEvents = 'auto';
+                }
+                if (modeBar) {
+                    modeBar.style.opacity = '1';
+                    modeBar.style.pointerEvents = 'auto';
+                }
+                if (toggleBtn) {
+                    toggleBtn.style.opacity = '1';
+                    toggleBtn.style.pointerEvents = 'auto';
+                }
                 // 隐藏恢复区域
-                if (restoreArea) restoreArea.style.display = 'none';
-                if (restoreAreaBottom) restoreAreaBottom.style.display = 'none';
+                if (restoreArea) {
+                    restoreArea.style.display = 'none';
+                    restoreArea.style.pointerEvents = 'none';
+                }
+                if (restoreAreaBottom) {
+                    restoreAreaBottom.style.display = 'none';
+                    restoreAreaBottom.style.pointerEvents = 'none';
+                }
             }
         }
         
-        // 恢复UI显示的函数
+        // 恢复UI显示的函数（通过点击恢复区域触发）
         function restoreUI() {
             if (STATE.uiHidden) {
                 toggleUI();
@@ -856,6 +887,7 @@
         
         // 暴露给全局使用
         window.restoreUI = restoreUI;
+        window.toggleUI = toggleUI;
 
         function setupEvents() {
             window.addEventListener('resize', () => {
