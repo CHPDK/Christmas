@@ -895,24 +895,55 @@
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
                 
-                // iOS Safari需要等待视频元数据加载
-                const playPromise = video.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.warn("视频播放错误:", error);
-                        debugInfo.innerText = "需要用户交互才能启动视频";
-                    });
+                // iOS Safari关键修复：等待视频完全准备好
+                await new Promise((resolve, reject) => {
+                    let resolved = false;
+                    const timeout = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            reject(new Error('视频加载超时'));
+                        }
+                    }, 10000);
+                    
+                    video.onloadedmetadata = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            resolve();
+                        }
+                    };
+                    
+                    video.onerror = (e) => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            reject(e);
+                        }
+                    };
+                });
+                
+                // 确保视频播放
+                try {
+                    await video.play();
+                } catch (playError) {
+                    console.warn("视频播放需要用户交互:", playError);
+                    // iOS Safari可能需要用户交互，但我们已经在按钮点击中了
                 }
                 
-                video.addEventListener("loadeddata", predictWebcam);
-                video.addEventListener("loadedmetadata", () => {
-                    // iOS Safari视频准备就绪
-                    if (iosDevice) {
-                        video.play().catch(e => {
-                            console.warn("iOS视频播放需要用户交互:", e);
-                        });
-                    }
+                // 等待视频真正开始播放（关键修复）
+                await new Promise((resolve) => {
+                    const checkPlaying = () => {
+                        if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+                            resolve();
+                        } else {
+                            setTimeout(checkPlaying, 100);
+                        }
+                    };
+                    checkPlaying();
                 });
+                
+                // 现在才开始预测
+                requestAnimationFrame(predictWebcam);
                 
                 // 隐藏视频预览窗口，但保持功能正常
                 document.getElementById('webcam-wrapper').style.display = 'none';
@@ -923,43 +954,74 @@
                 }
                 isCameraRunning = true;
             } catch(e) {
-                console.warn("Camera error:", e);
-                let msg = "摄像头错误： " + e.name;
+                console.error("Camera error:", e);
+                let msg = "摄像头错误";
                 if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
                     msg = "请允许摄像头访问！";
-                } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                    msg = "摄像头需要HTTPS！";
+                } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+                    msg = "未找到摄像头设备";
                 } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
                     msg = "摄像头被占用或不可用";
+                } else if (e.name === 'OverconstrainedError') {
+                    msg = "摄像头不支持请求的配置";
+                } else if (e.name === 'TypeError') {
+                    msg = "摄像头初始化错误，请重试";
+                } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    msg = "摄像头需要HTTPS！";
+                } else if (e.message) {
+                    msg = "摄像头错误: " + e.message;
                 }
                 debugInfo.innerText = msg; 
                 showMsg(msg);
-                if (camBtn) camBtn.innerText = "重试摄像头";
+                if (camBtn) {
+                    camBtn.innerText = "重试摄像头";
+                    camBtn.classList.remove('active');
+                }
+                isCameraRunning = false;
             }
         }
         let lastVideoTime = -1;
         let isPredicting = false;
         async function predictWebcam() {
-            if (isPredicting) return;
+            // 停止条件检查
+            if (!isCameraRunning || !video || !handLandmarker) {
+                return;
+            }
             
-            // iOS Safari视频状态检查
-            if (video.readyState < 2) {
+            if (isPredicting) {
+                requestAnimationFrame(predictWebcam);
+                return;
+            }
+            
+            // iOS Safari关键修复：严格的视频状态检查
+            if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
+                requestAnimationFrame(predictWebcam);
+                return;
+            }
+            
+            // 检查视频是否真的在播放
+            if (video.paused || video.ended) {
                 requestAnimationFrame(predictWebcam);
                 return;
             }
             
             if (video.currentTime !== lastVideoTime) {
                 lastVideoTime = video.currentTime;
-                if (handLandmarker && video.readyState >= 2) {
-                    try {
-                        isPredicting = true;
+                try {
+                    isPredicting = true;
+                    // iOS Safari关键修复：添加额外的安全检查
+                    if (handLandmarker && video.videoWidth > 0 && video.videoHeight > 0) {
                         const result = handLandmarker.detectForVideo(video, performance.now());
                         processGestures(result);
-                    } catch (e) {
-                        console.warn("手势识别错误:", e);
-                    } finally {
-                        isPredicting = false;
                     }
+                } catch (e) {
+                    console.warn("手势识别错误:", e);
+                    // TypeError通常意味着视频元素状态不对，暂停一下再继续
+                    if (e.name === 'TypeError') {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                } finally {
+                    isPredicting = false;
                 }
             }
             requestAnimationFrame(predictWebcam);
